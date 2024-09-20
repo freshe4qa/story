@@ -125,8 +125,10 @@ sudo tee <<EOF >/dev/null /etc/systemd/journald.conf
 Storage=persistent
 EOF
 
-curl -o - -L https://share102.utsa.tech/story/story_testnet.tar.lz4 | lz4 -c -d - | tar -x -C $HOME/.story/story/
-curl -o - -L https://share102.utsa.tech/story/story_geth_testnet.tar.lz4 | lz4 -c -d - | tar -x -C $HOME/.story/geth/iliad/geth/
+story_snapshot_url=$(curl -sL 'https://story-testnet-snapshots.f5nodes.com' | grep -Eo '>iliad-0_story.*\.tar\.lz4' | sed 's/^>//' | head -n1)
+geth_snapshot_url=$(curl -sL 'https://story-testnet-snapshots.f5nodes.com' | grep -Eo '>iliad-0_geth.*\.tar\.lz4' | sed 's/^>//' | head -n1)
+wget "https://story-testnet-snapshots.f5nodes.com/${story_snapshot_url}" -O - | lz4 -dc - | tar -xf - -C $HOME/.story
+wget "https://story-testnet-snapshots.f5nodes.com/${geth_snapshot_url}" -O - | lz4 -dc - | tar -xf - -C $HOME/.story/geth/iliad/geth
 wget -O $HOME/.story/story/config/addrbook.json "https://share102.utsa.tech/story/addrbook.json"
 
 echo -e '\n\e[42mChecking a ports\e[0m\n' && sleep 1
