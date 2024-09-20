@@ -1,184 +1,157 @@
 #!/bin/bash
-exists()
-{
-  command -v "$1" >/dev/null 2>&1
-}
-if exists curl; then
-echo ''
-else
-  sudo apt update && sudo apt install curl -y < "/dev/null"
+
+while true
+do
+
+# Logo
+
+echo -e '\e[40m\e[91m'
+echo -e '  ____                  _                    '
+echo -e ' / ___|_ __ _   _ _ __ | |_ ___  _ __        '
+echo -e '| |   |  __| | | |  _ \| __/ _ \|  _ \       '
+echo -e '| |___| |  | |_| | |_) | || (_) | | | |      '
+echo -e ' \____|_|   \__  |  __/ \__\___/|_| |_|      '
+echo -e '            |___/|_|                         '
+echo -e '\e[0m'
+
+sleep 2
+
+# Menu
+
+PS3='Select an action: '
+options=(
+"Install"
+"Create Validator"
+"Exit")
+select opt in "${options[@]}"
+do
+case $opt in
+
+"Install")
+echo "============================================================"
+echo "Install start"
+echo "============================================================"
+
+# set vars
+if [ ! $NODENAME ]; then
+	read -p "Enter node name: " NODENAME
+	echo 'export NODENAME='$NODENAME >> $HOME/.bash_profile
 fi
-bash_profile=$HOME/.bash_profile
-if [ -f "$bash_profile" ]; then
-    source $HOME/.bash_profile
+if [ ! $WALLET ]; then
+	echo "export WALLET=wallet" >> $HOME/.bash_profile
 fi
-RED='\033[0;31m'
-RESET='\033[0m'
-
-# Get the Ubuntu version
-version=$(lsb_release -r | awk '{print $2}')
-
-# Convert the version to a number for comparison
-version_number=$(echo $version | sed 's/\.//')
-
-# Set the minimum supported version
-min_version_number=2204
-
-# Compare the versions
-if [ "$version_number" -lt "$min_version_number" ]; then
-    echo -e "${RED}Current Ubuntu Version: "$version".${RESET}"
-    echo "" && sleep 1
-    echo -e "${RED}Required Ubuntu Version: 22.04.${RESET}"
-    echo "" && sleep 1
-    echo -e "${RED}Please use Ubuntu version 22.04 or higher.${RESET}"
-    exit 1
-fi	
-
-NODE="story"
-DAEMON_HOME="$HOME/.story/story"
-DAEMON_NAME="story"
-if [ -d "$DAEMON_HOME" ]; then
-    new_folder_name="${DAEMON_HOME}_$(date +"%Y%m%d_%H%M%S")"
-    mv "$DAEMON_HOME" "$new_folder_name"
-fi
-CHAIN_ID="iliad"
-echo 'export CHAIN_ID='\"${CHAIN_ID}\" >> $HOME/.bash_profile
-
-if [ ! $VALIDATOR ]; then
-    read -p "Enter validator name: " VALIDATOR
-    echo 'export VALIDATOR='\"${VALIDATOR}\" >> $HOME/.bash_profile
-fi
-echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
+echo "export STORY_CHAIN_ID=iliad" >> $HOME/.bash_profile
 source $HOME/.bash_profile
-sleep 1
-cd $HOME
-sudo apt update
-sudo apt install make unzip clang pkg-config lz4 libssl-dev build-essential git jq ncdu bsdmainutils htop -y < "/dev/null"
 
-cd $HOME
-VERSION=1.23.0
-wget -O go.tar.gz https://go.dev/dl/go$VERSION.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go.tar.gz && rm go.tar.gz
-echo 'export GOROOT=/usr/local/go' >> $HOME/.bash_profile
-echo 'export GOPATH=$HOME/go' >> $HOME/.bash_profile
-echo 'export GO111MODULE=on' >> $HOME/.bash_profile
-echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> $HOME/.bash_profile && . $HOME/.bash_profile
+# update
+sudo apt update && sudo apt upgrade -y
+
+# packages
+apt install curl iptables build-essential git wget jq make gcc nano tmux htop nvme-cli pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip libleveldb-dev lz4 -y
+
+# install go
+ver="1.23.1" && \
+wget "https://golang.org/dl/go$ver.linux-amd64.tar.gz" && \
+sudo rm -rf /usr/local/go && \
+sudo tar -C /usr/local -xzf "go$ver.linux-amd64.tar.gz" && \
+rm "go$ver.linux-amd64.tar.gz" && \
+echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> $HOME/.bash_profile && \
+source $HOME/.bash_profile && \
 go version
 
-#sleep 1
-wget -O story-linux-amd64-0.10.0-9603826.tar.gz https://story-geth-binaries.s3.us-west-1.amazonaws.com/story-public/story-linux-amd64-0.10.0-9603826.tar.gz
-tar xvf story-linux-amd64-0.10.0-9603826.tar.gz
-sudo chmod +x story-linux-amd64-0.10.0-9603826.tar.gz
-sudo mv story-linux-amd64-0.10.0-9603826.tar.gz /usr/local/bin/
+ufw allow 30303 comment story_geth_p2p_port
+ufw allow 26656 comment story_p2p_port
+
+# download binary
+mkdir -p $HOME/go/bin/
+cd $HOME
+mkdir -p $HOME/story && cd story
+wget https://story-geth-binaries.s3.us-west-1.amazonaws.com/geth-public/geth-linux-amd64-0.9.2-ea9f0d2.tar.gz
+tar -xvf geth-linux-amd64-0.9.2-ea9f0d2.tar.gz
+mv $HOME/story/geth-linux-amd64-0.9.2-ea9f0d2/geth $HOME/go/bin/story-geth
+story-geth version
+rm -r geth-linux-amd64*
+
+wget https://story-geth-binaries.s3.us-west-1.amazonaws.com/story-public/story-linux-amd64-0.10.0-9603826.tar.gz
+tar -xvf story-linux-amd64-0.10.0-9603826.tar.gz
+mv $HOME/story/story-linux-amd64-0.10.0-9603826/story $HOME/go/bin/story
 story version
+rm -r story-linux-amd64*
 
-wget -O geth-linux-amd64-0.9.2-ea9f0d2.tar.gz https://story-geth-binaries.s3.us-west-1.amazonaws.com/geth-public/geth-linux-amd64-0.9.2-ea9f0d2.tar.gz 
-tar xvf geth-linux-amd64-0.9.2-ea9f0d2.tar.gz
-sudo chmod +x geth-linux-amd64-0.9.2-ea9f0d2/geth
-sudo mv geth-linux-amd64-0.9.2-ea9f0d2/geth /usr/local/bin/story-geth
-SEEDS="81987895a11f6689ada254c6b57932ab7ed909b6@54.241.167.190:26656,010fb4de28667725a4fef26cdc7f9452cc34b16d@54.176.175.48:26656,e9b4bc203197b62cc7e6a80a64742e752f4210d5@54.193.250.204:26656,68b9145889e7576b652ca68d985826abd46ad660@18.166.164.232:26656"
+# init
+story init --moniker "$NODENAME" --network $STORY_CHAIN_ID
 
-$DAEMON_NAME init --network iliad  --moniker "${VALIDATOR}"
-sleep 1
-$DAEMON_NAME validator export --export-evm-key --evm-key-path $HOME/.story/.env
-$DAEMON_NAME validator export --export-evm-key >>$HOME/.story/story/config/wallet.txt
-cat $HOME/.story/.env >>$HOME/.story/story/config/wallet.txt
+# download genesis and addrbook
+wget -O $HOME/.story/story/config/addrbook.json "https://share102.utsa.tech/story/addrbook.json"
 
+# set peers and seeds
+SEEDS="6a07e2f396519b55ea05f195bac7800b451983c0@story-seed.mandragora.io:26656"
+PEERS="90161a7f82ce5dbfbed1a2a9d40d4103730cff0f@5.9.87.231:26656"
+sed -i -e "s/^seeds *=.*/seeds = \"$SEEDS\"/; s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/story/config/config.toml
 
-sudo tee /etc/systemd/system/story-geth.service > /dev/null <<EOF  
+# create service
+tee /etc/systemd/system/story-geth.service > /dev/null <<EOF
 [Unit]
-Description=Story execution daemon
-After=network-online.target
+Description=Story Geth Client
+After=network.target
 
 [Service]
 User=$USER
-#WorkingDirectory=$HOME/.story/geth
-ExecStart=/usr/local/bin/story-geth --iliad --syncmode full
-Restart=always
+ExecStart=$HOME/go/bin/story-geth --iliad --syncmode full --http --http.api eth,net,web3,engine --http.vhosts '*' --http.addr 127.0.0.1 --http.port 8545 --ws --ws.api eth,web3,net,txpool --ws.addr 127.0.0.1 --ws.port 8546
+Restart=on-failure
 RestartSec=3
-LimitNOFILE=infinity
-LimitNPROC=infinity
+LimitNOFILE=65535
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-sudo tee /etc/systemd/system/$NODE.service > /dev/null <<EOF  
+tee /etc/systemd/system/story.service > /dev/null <<EOF
 [Unit]
-Description=Story consensus daemon
-After=network-online.target
+Description=Story Consensus Client
+After=network.target
 
 [Service]
 User=$USER
 WorkingDirectory=$HOME/.story/story
-ExecStart=/usr/local/bin/story run
-Restart=always
+ExecStart=$HOME/go/bin/story run
+Restart=on-failure
 RestartSec=3
-LimitNOFILE=infinity
-LimitNPROC=infinity
+LimitNOFILE=65535
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-sudo tee <<EOF >/dev/null /etc/systemd/journald.conf
-Storage=persistent
-EOF
-
+# reset
 story_snapshot_url=$(curl -sL 'https://story-testnet-snapshots.f5nodes.com' | grep -Eo '>iliad-0_story.*\.tar\.lz4' | sed 's/^>//' | head -n1)
 geth_snapshot_url=$(curl -sL 'https://story-testnet-snapshots.f5nodes.com' | grep -Eo '>iliad-0_geth.*\.tar\.lz4' | sed 's/^>//' | head -n1)
+
 wget "https://story-testnet-snapshots.f5nodes.com/${story_snapshot_url}" -O - | lz4 -dc - | tar -xf - -C $HOME/.story
 wget "https://story-testnet-snapshots.f5nodes.com/${geth_snapshot_url}" -O - | lz4 -dc - | tar -xf - -C $HOME/.story/geth/iliad/geth
-wget -O $HOME/.story/story/config/addrbook.json "https://share102.utsa.tech/story/addrbook.json"
 
-echo -e '\n\e[42mChecking a ports\e[0m\n' && sleep 1
-#CHECK PORTS
-PORT=335
-if ss -tulpen | awk '{print $5}' | grep -q ":26656$" ; then
-    echo -e "\e[31mPort 26656 already in use.\e[39m"
-    sleep 2
-    sed -i -e "s|:26656\"|:${PORT}56\"|g" $DAEMON_HOME/config/config.toml
-    echo -e "\n\e[42mPort 26656 changed to ${PORT}56.\e[0m\n"
-    sleep 2
-fi
-if ss -tulpen | awk '{print $5}' | grep -q ":26657$" ; then
-    echo -e "\e[31mPort 26657 already in use\e[39m"
-    sleep 2
-    sed -i -e "s|:26657\"|:${PORT}57\"|" $DAEMON_HOME/config/config.toml
-    echo -e "\n\e[42mPort 26657 changed to ${PORT}57.\e[0m\n"
-    sleep 2
-    #$DAEMON_NAME config node tcp://localhost:${PORT}57
-fi
-if ss -tulpen | awk '{print $5}' | grep -q ":26658$" ; then
-    echo -e "\e[31mPort 26658 already in use.\e[39m"
-    sleep 2
-    sed -i -e "s|:26658\"|:${PORT}58\"|" $DAEMON_HOME/config/config.toml
-    echo -e "\n\e[42mPort 26658 changed to ${PORT}58.\e[0m\n"
-    sleep 2
-fi
-if ss -tulpen | awk '{print $5}' | grep -q ":1317$" ; then
-    echo -e "\e[31mPort 1317 already in use.\e[39m"
-    sleep 2
-    sed -i -e "s|:1317\"|:${PORT}17\"|" $DAEMON_HOME/config/story.toml
-    echo -e "\n\e[42mPort 1317 changed to ${PORT}17.\e[0m\n"
-    sleep 2
-fi
+# start service
+systemctl daemon-reload
+systemctl enable story
+systemctl enable story-geth
 
-#echo -e '\n\e[42mRunning a service\e[0m\n' && sleep 1
-sudo systemctl restart systemd-journald
-sudo systemctl daemon-reload
-sudo systemctl enable $NODE
-sudo systemctl restart $NODE
-sudo systemctl enable story-geth
-sudo systemctl restart story-geth
-sleep 5
+break
+;;
 
+"Create Validator")
+story validator export \
+story validator export --export-evm-key \
+story validator export --export-evm-key --evm-key-path $HOME/.story/story/.env \
+cat /root/.story/story/config/private_key.txt \
+story validator create --stake 1000000000000000000
+  
+break
+;;
 
-echo -e '\n\e[42mCheck node status\e[0m\n' && sleep 1
-if [[ `service $NODE status | grep active` =~ "running" ]]; then
-  echo -e "Your $NODE node \e[32minstalled and works\e[39m!"
-  echo -e "You can check node status by the command \e[7mservice 0g status\e[0m"
-  echo -e "Press \e[7mQ\e[0m for exit from status menu"
-else
-  echo -e "Your $NODE node \e[31mwas not installed correctly\e[39m, please reinstall."
-fi
+"Exit")
+exit
+;;
+*) echo "invalid option $REPLY";;
+esac
+done
+done
