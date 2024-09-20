@@ -85,9 +85,11 @@ story init --moniker "$NODENAME" --network $STORY_CHAIN_ID
 wget -O $HOME/.story/story/config/addrbook.json "https://share102.utsa.tech/story/addrbook.json"
 
 # set peers and seeds
-SEEDS="6a07e2f396519b55ea05f195bac7800b451983c0@story-seed.mandragora.io:26656"
-PEERS="90161a7f82ce5dbfbed1a2a9d40d4103730cff0f@5.9.87.231:26656"
-sed -i -e "s/^seeds *=.*/seeds = \"$SEEDS\"/; s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/story/config/config.toml
+PEERS=$(curl -sS https://story-rpc.mandragora.io/net_info | jq -r '.result.peers[] | "\(.node_info.id)@\(.remote_ip):\(.node_info.listen_addr)"' | awk -F ':' '{print $1":"$(NF)}' | paste -sd, -)
+sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/story/config/config.toml
+
+SEEDS=6a07e2f396519b55ea05f195bac7800b451983c0@story-seed.mandragora.io:26656,51ff395354c13fab493a03268249a74860b5f9cc@story-testnet-seed.itrocket.net:26656,5d7507dbb0e04150f800297eaba39c5161c034fe@135.125.188.77:26656
+sed -i.bak -e "s/^seeds *=.*/seeds = \"$SEEDS\"/" $HOME/.story/story/config/config.toml
 
 # create service
 tee /etc/systemd/system/story-geth.service > /dev/null <<EOF
@@ -124,11 +126,12 @@ WantedBy=multi-user.target
 EOF
 
 # reset
-story_snapshot_url=$(curl -sL 'https://story-testnet-snapshots.f5nodes.com' | grep -Eo '>iliad-0_story.*\.tar\.lz4' | sed 's/^>//' | head -n1)
-geth_snapshot_url=$(curl -sL 'https://story-testnet-snapshots.f5nodes.com' | grep -Eo '>iliad-0_geth.*\.tar\.lz4' | sed 's/^>//' | head -n1)
-
-wget "https://story-testnet-snapshots.f5nodes.com/${story_snapshot_url}" -O - | lz4 -dc - | tar -xf - -C $HOME/.story
-wget "https://story-testnet-snapshots.f5nodes.com/${geth_snapshot_url}" -O - | lz4 -dc - | tar -xf - -C $HOME/.story/geth/iliad/geth
+wget -O geth_snapshot.lz4 https://snapshots.mandragora.io/geth_snapshot.lz4
+wget -O story_snapshot.lz4 https://snapshots.mandragora.io/story_snapshot.lz4
+lz4 -c -d geth_snapshot.lz4 | tar -x -C $HOME/.story/geth/iliad/geth
+lz4 -c -d story_snapshot.lz4 | tar -x -C $HOME/.story/story
+sudo rm -v geth_snapshot.lz4
+sudo rm -v story_snapshot.lz4
 
 # start service
 systemctl daemon-reload
