@@ -64,8 +64,8 @@ cd $HOME
 sudo rm -rf story
 wget -O story-linux-amd64-0.10.0-9603826.tar.gz https://story-geth-binaries.s3.us-west-1.amazonaws.com/story-public/story-linux-amd64-0.10.0-9603826.tar.gz
 tar xvf story-linux-amd64-0.10.0-9603826.tar.gz
-sudo chmod +x story-linux-amd64-0.10.0-9603826.tar.gz
-sudo mv story-linux-amd64-0.10.0-9603826.tar.gz /usr/local/bin/
+sudo chmod +x story-linux-amd64-0.10.0-9603826/story
+sudo mv story-linux-amd64-0.10.0-9603826/story /usr/local/bin/
 story version
 
 cd $HOME
