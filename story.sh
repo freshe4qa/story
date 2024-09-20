@@ -126,12 +126,13 @@ WantedBy=multi-user.target
 EOF
 
 # reset
-wget -O geth_snapshot.lz4 https://snapshots.mandragora.io/geth_snapshot.lz4
-wget -O story_snapshot.lz4 https://snapshots.mandragora.io/story_snapshot.lz4
-lz4 -c -d geth_snapshot.lz4 | tar -x -C $HOME/.story/geth/iliad/geth
-lz4 -c -d story_snapshot.lz4 | tar -x -C $HOME/.story/story
-sudo rm -v geth_snapshot.lz4
-sudo rm -v story_snapshot.lz4
+cd $HOME
+rm -f Geth_snapshot.lz4
+wget --show-progress https://josephtran.co/Geth_snapshot.lz4
+rm -rf ~/.story/story/data
+rm -rf ~/.story/geth/iliad/geth/chaindata
+sudo mkdir -p /root/.story/story/data
+lz4 -d Story_snapshot.lz4 | pv | sudo tar xv -C /root/.story/story/
 
 # start service
 systemctl daemon-reload
