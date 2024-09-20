@@ -81,10 +81,10 @@ sudo chmod +x geth-linux-amd64-0.9.2-ea9f0d2/geth
 sudo mv geth-linux-amd64-0.9.2-ea9f0d2/geth /usr/local/bin/story-geth
 
 # init
-story init --network iliad  --moniker "${VALIDATOR}"
-
-story validator export --export-evm-key --evm-key-path $HOME/.story/.env
-story validator export --export-evm-key >>$HOME/.story/story/config/wallet.txt
+$DAEMON_NAME init --network iliad  --moniker "${VALIDATOR}"
+sleep 1
+$DAEMON_NAME validator export --export-evm-key --evm-key-path $HOME/.story/.env
+$DAEMON_NAME validator export --export-evm-key >>$HOME/.story/story/config/wallet.txt
 cat $HOME/.story/.env >>$HOME/.story/story/config/wallet.txt
 
 # download genesis and addrbook
