@@ -58,7 +58,7 @@ sudo rm -rf /usr/local/go
 curl -L https://go.dev/dl/go1.21.6.linux-amd64.tar.gz | sudo tar -xzf - -C /usr/local
 echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> $HOME/.bash_profile
 source .bash_profile
-
+sleep 1
 # download binary
 cd $HOME
 sudo rm -rf story
