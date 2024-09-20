@@ -47,7 +47,7 @@ source $HOME/.bash_profile
 sudo apt update && sudo apt upgrade -y
 
 # packages
-apt install curl iptables build-essential git wget jq make gcc nano tmux htop nvme-cli pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip libleveldb-dev lz4 -y
+apt install curl iptables build-essential git wget jq make gcc nano tmux htop nvme-cli pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip libleveldb-dev lz4 aria2 pv -y
 
 # install go
 ver="1.23.1" && \
