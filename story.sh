@@ -62,7 +62,7 @@ sleep 1
 # download binary
 cd $HOME
 sudo rm -rf story
-wget -O story-linux-amd64-0.10.1-57567e5.tar.gz https://story-geth-binaries.s3.us-west-1.amazonaws.com/story-public/story-linux-amd64-0.11.0-aac4bfe.tar.gz
+wget -O story-linux-amd64-0.11.0-aac4bfe.tar.gz https://story-geth-binaries.s3.us-west-1.amazonaws.com/story-public/story-linux-amd64-0.11.0-aac4bfe.tar.gz
 tar xvf story-linux-amd64-0.11.0-aac4bfe.tar.gz
 sudo chmod +x story-linux-amd64-0.11.0-aac4bfe/story
 sudo mv story-linux-amd64-0.11.0-aac4bfe/story /usr/local/bin/
