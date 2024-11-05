@@ -54,26 +54,36 @@ sudo apt update && sudo apt upgrade -y
 apt install curl iptables build-essential git wget jq make gcc nano tmux htop nvme-cli pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip libleveldb-dev lz4 aria2 pv -y
 
 # install go
-sudo rm -rf /usr/local/go
-curl -L https://go.dev/dl/go1.21.6.linux-amd64.tar.gz | sudo tar -xzf - -C /usr/local
-echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> $HOME/.bash_profile
-source .bash_profile
-sleep 1
-# download binary
-cd $HOME
-sudo rm -rf story
-wget -O story-linux-amd64-0.11.0-aac4bfe.tar.gz https://story-geth-binaries.s3.us-west-1.amazonaws.com/story-public/story-linux-amd64-0.11.0-aac4bfe.tar.gz
-tar xvf story-linux-amd64-0.11.0-aac4bfe.tar.gz
-sudo chmod +x story-linux-amd64-0.11.0-aac4bfe/story
-sudo mv story-linux-amd64-0.11.0-aac4bfe/story /usr/local/bin/
-story version
+ver="1.23.1" && \
+wget "https://golang.org/dl/go$ver.linux-amd64.tar.gz" && \
+sudo rm -rf /usr/local/go && \
+sudo tar -C /usr/local -xzf "go$ver.linux-amd64.tar.gz" && \
+rm "go$ver.linux-amd64.tar.gz" && \
+echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> $HOME/.bash_profile && \
+source $HOME/.bash_profile && \
+go version
 
-cd $HOME
-rm -rf story-geth
-wget -O geth-linux-amd64.tar.gz https://github.com/piplabs/story-geth/releases/download/v0.9.4/geth-linux-amd64.tar.gz 
-tar xvf geth-linux-amd64.tar.gz
-sudo chmod +x geth-linux-amd64/geth
-sudo mv geth-linux-amd64/geth /usr/local/bin/story-geth
+ufw allow 30303 comment story_geth_p2p_port
+ufw allow 26656 comment story_p2p_port
+ufw allow 26660 comment story_prometheus_port
+ufw allow 6060 comment story_geth_prometheus_port
+
+mkdir -p $HOME/go/bin/
+# download binary
+cd
+wget -O story-geth https://github.com/piplabs/story-geth/releases/download/v0.10.0/geth-linux-amd64
+chmod +x story-geth
+mv story-geth $HOME/go/bin/story-geth
+
+story-geth version
+
+cd
+git clone https://github.com/piplabs/story && cd story
+git checkout v0.12.0
+go build -o story ./client
+mv $HOME/story/story $HOME/go/bin/
+
+story version
 
 # init
 $DAEMON_NAME init --network iliad  --moniker "${VALIDATOR}"
@@ -83,108 +93,54 @@ $DAEMON_NAME validator export --export-evm-key >>$HOME/.story/story/config/walle
 cat $HOME/.story/.env >>$HOME/.story/story/config/wallet.txt
 
 # download genesis and addrbook
-wget -O $HOME/.story/story/config/addrbook.json https://raw.githubusercontent.com/McDaan/general/main/story/addrbook.json
+wget -O $HOME/.story/story/config/addrbook.json "https://share102.utsa.tech/story/addrbook.json"
 
 # set peers and seeds
-PEERS=$(curl -sS https://story-rpc.mandragora.io/net_info | jq -r '.result.peers[] | "\(.node_info.id)@\(.remote_ip):\(.node_info.listen_addr)"' | awk -F ':' '{print $1":"$(NF)}' | paste -sd, -)
-sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/story/config/config.toml
-
-SEEDS=6a07e2f396519b55ea05f195bac7800b451983c0@story-seed.mandragora.io:26656,51ff395354c13fab493a03268249a74860b5f9cc@story-testnet-seed.itrocket.net:26656,5d7507dbb0e04150f800297eaba39c5161c034fe@135.125.188.77:26656
-sed -i.bak -e "s/^seeds *=.*/seeds = \"$SEEDS\"/" $HOME/.story/story/config/config.toml
+peers="c5c214377b438742523749bb43a2176ec9ec983c@176.9.54.69:26656,5dec0b793789d85c28b1619bffab30d5668039b7@150.136.113.152:26656,89a07021f98914fbac07aae9fbb12a92c5b6b781@152.53.102.226:26656,443896c7ec4c695234467da5e503c78fcd75c18e@80.241.215.215:26656,2df2b0b66f267939fea7fe098cfee696d6243cec@65.108.193.224:23656,7cc415203fc4c1a6e534e5fed8292467cf14d291@65.21.29.250:3610,fa294c4091379f84d0fc4a27e6163c956fc08e73@65.108.103.184:26656,81eaee3be00b21d0a124016b62fb7176fa05a4f9@185.198.49.133:33556,3508ef280392bd431ea078dec16dcfae89e8eb78@213.239.192.18:26656,b04bae4f88ca12d45fc14be29ce96837b61a72b8@65.109.49.115:26656"
+sed -i -e "s|^persistent_peers *=.*|persistent_peers = \"$peers\"|" $HOME/.story/story/config/config.toml
+seeds="434af9dae402ab9f1c8a8fc15eae2d68b5be3387@story-testnet-seed.itrocket.net:29656"
+sed -i.bak -e "s/^seeds =.*/seeds = \"$seeds\"/" $HOME/.story/story/config/config.toml
 
 # create service
-sudo tee /etc/systemd/system/story-geth.service > /dev/null <<EOF  
+tee /etc/systemd/system/story-geth.service > /dev/null <<EOF
 [Unit]
-Description=Story execution daemon
-After=network-online.target
+Description=Story Geth Client
+After=network.target
 
 [Service]
 User=$USER
-#WorkingDirectory=$HOME/.story/geth
-ExecStart=/usr/local/bin/story-geth --iliad --syncmode full
-Restart=always
+ExecStart=$HOME/go/bin/story-geth --odyssey --syncmode full --http --http.api eth,net,web3,engine --http.vhosts '*' --http.addr 127.0.0.1 --http.port 8545 --ws --ws.api eth,web3,net,txpool --ws.addr 127.0.0.1 --ws.port 8546
+Restart=on-failure
 RestartSec=3
-LimitNOFILE=infinity
-LimitNPROC=infinity
+LimitNOFILE=65535
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-sudo tee /etc/systemd/system/$NODE.service > /dev/null <<EOF  
+tee /etc/systemd/system/story.service > /dev/null <<EOF
 [Unit]
-Description=Story consensus daemon
-After=network-online.target
+Description=Story Consensus Client
+After=network.target
 
 [Service]
 User=$USER
 WorkingDirectory=$HOME/.story/story
-ExecStart=/usr/local/bin/story run
-Restart=always
+ExecStart=$HOME/go/bin/story run
+Restart=on-failure
 RestartSec=3
-LimitNOFILE=infinity
-LimitNPROC=infinity
+LimitNOFILE=65535
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-sudo tee <<EOF >/dev/null /etc/systemd/journald.conf
-Storage=persistent
-EOF
-
-# reset
-sudo rm -rf $HOME/.story/geth/iliad/geth/chaindata
-sudo rm -rf $HOME/.story/story/data
-
-wget -O geth_snapshot.lz4 https://snapshots.mandragora.io/geth_snapshot.lz4
-wget -O story_snapshot.lz4 https://snapshots.mandragora.io/story_snapshot.lz4
-
-lz4 -c -d geth_snapshot.lz4 | tar -x -C $HOME/.story/geth/iliad/geth
-lz4 -c -d story_snapshot.lz4 | tar -x -C $HOME/.story/story
-
-sudo rm -v geth_snapshot.lz4
-sudo rm -v story_snapshot.lz4
-
-#CHECK PORTS
-PORT=335
-if ss -tulpen | awk '{print $5}' | grep -q ":26656$" ; then
-    echo -e "\e[31mPort 26656 already in use.\e[39m"
-    sleep 2
-    sed -i -e "s|:26656\"|:${PORT}56\"|g" $DAEMON_HOME/config/config.toml
-    echo -e "\n\e[42mPort 26656 changed to ${PORT}56.\e[0m\n"
-    sleep 2
-fi
-if ss -tulpen | awk '{print $5}' | grep -q ":26657$" ; then
-    echo -e "\e[31mPort 26657 already in use\e[39m"
-    sleep 2
-    sed -i -e "s|:26657\"|:${PORT}57\"|" $DAEMON_HOME/config/config.toml
-    echo -e "\n\e[42mPort 26657 changed to ${PORT}57.\e[0m\n"
-    sleep 2
-    #$DAEMON_NAME config node tcp://localhost:${PORT}57
-fi
-if ss -tulpen | awk '{print $5}' | grep -q ":26658$" ; then
-    echo -e "\e[31mPort 26658 already in use.\e[39m"
-    sleep 2
-    sed -i -e "s|:26658\"|:${PORT}58\"|" $DAEMON_HOME/config/config.toml
-    echo -e "\n\e[42mPort 26658 changed to ${PORT}58.\e[0m\n"
-    sleep 2
-fi
-if ss -tulpen | awk '{print $5}' | grep -q ":1317$" ; then
-    echo -e "\e[31mPort 1317 already in use.\e[39m"
-    sleep 2
-    sed -i -e "s|:1317\"|:${PORT}17\"|" $DAEMON_HOME/config/story.toml
-    echo -e "\n\e[42mPort 1317 changed to ${PORT}17.\e[0m\n"
-    sleep 2
-fi
-
-# start service
-sudo systemctl restart systemd-journald
-sudo systemctl daemon-reload
-sudo systemctl enable $NODE
-sudo systemctl restart $NODE
-sudo systemctl enable story-geth
-sudo systemctl restart story-geth
+#start service
+systemctl daemon-reload
+systemctl enable story
+systemctl enable story-geth
+systemctl restart story-geth
+systemctl restart story
 
 break
 ;;
