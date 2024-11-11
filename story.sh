@@ -68,25 +68,26 @@ ufw allow 26656 comment story_p2p_port
 ufw allow 26660 comment story_prometheus_port
 ufw allow 6060 comment story_geth_prometheus_port
 
-mkdir -p $HOME/go/bin/
 # download binary
-cd
-wget -O story-geth https://github.com/piplabs/story-geth/releases/download/v0.10.0/geth-linux-amd64
-chmod +x story-geth
-mv story-geth $HOME/go/bin/story-geth
-
+cd && rm -rf story
+git clone https://github.com/piplabs/story.git
+cd story
+git checkout v0.12.1
 story-geth version
 
-cd
-git clone https://github.com/piplabs/story && cd story
-git checkout v0.12.0
-go build -o story ./client
-mv $HOME/story/story $HOME/go/bin/
+mkdir -p $HOME/go/bin/
+go build -o $HOME/go/bin/story ./client
 
-story version
+cd && rm -rf story-geth
+git clone https://github.com/piplabs/story-geth.git
+cd story-geth
+git checkout v0.10.0
+
+make geth
+mv build/bin/geth $HOME/go/bin/
 
 # init
-$DAEMON_NAME init --network iliad  --moniker "${VALIDATOR}"
+story init --moniker $VALIDATOR --network odyssey
 sleep 1
 $DAEMON_NAME validator export --export-evm-key --evm-key-path $HOME/.story/.env
 $DAEMON_NAME validator export --export-evm-key >>$HOME/.story/story/config/wallet.txt
@@ -96,22 +97,31 @@ cat $HOME/.story/.env >>$HOME/.story/story/config/wallet.txt
 wget -O $HOME/.story/story/config/addrbook.json "https://share102.utsa.tech/story/addrbook.json"
 
 # set peers and seeds
-peers="c5c214377b438742523749bb43a2176ec9ec983c@176.9.54.69:26656,5dec0b793789d85c28b1619bffab30d5668039b7@150.136.113.152:26656,89a07021f98914fbac07aae9fbb12a92c5b6b781@152.53.102.226:26656,443896c7ec4c695234467da5e503c78fcd75c18e@80.241.215.215:26656,2df2b0b66f267939fea7fe098cfee696d6243cec@65.108.193.224:23656,7cc415203fc4c1a6e534e5fed8292467cf14d291@65.21.29.250:3610,fa294c4091379f84d0fc4a27e6163c956fc08e73@65.108.103.184:26656,81eaee3be00b21d0a124016b62fb7176fa05a4f9@185.198.49.133:33556,3508ef280392bd431ea078dec16dcfae89e8eb78@213.239.192.18:26656,b04bae4f88ca12d45fc14be29ce96837b61a72b8@65.109.49.115:26656"
+peers="02e9fac0fab468724db00e5e3328b2cbca258fdc@95.217.193.182:26656,b8ad3364924728ef0f434102d3f7803fb18c6f90@37.60.236.104:656,75ac7b193e93e928d6c83c273397517cb60603c0@3.142.16.95:26656,8903b32fe2a4eeb41c4e74c715cc1760e39adb9f@37.60.229.77:656,5c001659b68370e7198e9c6c72bfc4c3c15dba41@211.218.55.32:50656,e1245ea24138ff16ca144962f72146d6afcbfe15@221.148.45.118:26656,a7909c1f6a43615d32febe2e61ca017d934e641c@144.76.26.62:26656,e8d2732e64d3dcedb3960cbed9aeb325e6ffec51@37.60.234.34:656,cc4d5da92dc08162a4f657d411971902f3dd26e1@212.47.71.202:26656,29d7d1d203ccf8c9afe593eab7bee485f1e6bbfa@37.252.186.234:26656,bf975933a1169221e3bd04164a7ba9abc5d164c8@3.16.175.31:26656,69950ba769347d99938a171da6084ea7985a09ed@37.60.236.169:656,04e5734295da362f09a61dd0a9999449448a0e5c@52.14.39.177:26656,046909534c2849ff8dccc15ee43ee63d2c60b21c@54.190.123.194:26656,9e2fabda41e3c3317c25f5ef6c604c1d78370aba@50.112.252.101:26656,0d3bff0cbc1a649c88f64f3888537710e7fec0f5@184.107.182.148:58300,7cc415203fc4c1a6e534e5fed8292467cf14d291@65.21.29.250:3610,1dae5464f40b0715b1c84fda4c19d18d50466976@161.97.161.144:26656,c3f3b40f66bf70fad77c6efc0ee5d5e47bfc0fa0@95.217.119.56:26556,f2cfc1c48d5b270e9f22a9cf367ae25d945358b6@95.216.39.239:10456"
 sed -i -e "s|^persistent_peers *=.*|persistent_peers = \"$peers\"|" $HOME/.story/story/config/config.toml
-seeds="434af9dae402ab9f1c8a8fc15eae2d68b5be3387@story-testnet-seed.itrocket.net:29656"
+seeds="ade4d8bc8cbe014af6ebdf3cb7b1e9ad36f412c0@testnet-seeds.polkachu.com:29256,3f472746f46493309650e5a033076689996c8881@story-testnet.rpc.kjnodes.com:26659,434af9dae402ab9f1c8a8fc15eae2d68b5be3387@@story-testnet-seed.itrocket.net:29656"
 sed -i.bak -e "s/^seeds =.*/seeds = \"$seeds\"/" $HOME/.story/story/config/config.toml
 
+mkdir -p $HOME/.story/geth
+
+sed -i -e "s%:1317%:29217%; s%:8080%:29280%; s%:9090%:29290%; s%:9091%:29291%; s%:8545%:29245%; s%:8546%:29246%; s%:6065%:29265%" $HOME/.story/story/config/app.toml
+sed -i -e "s%:26658%:29258%; s%:26657%:29257%; s%:6060%:29260%; s%:26656%:29256%; s%:26660%:29261%" $HOME/.story/story/config/config.toml
+
+curl "https://snapshots-testnet.nodejumper.io/story/story_latest.tar.lz4" | lz4 -dc - | tar -xf - -C "$HOME/.story/story"
+curl "https://snapshots-testnet.nodejumper.io/story/story_latest_geth.tar.lz4" | lz4 -dc - | tar -xf - -C "$HOME/.story/geth/odyssey/geth"
+
 # create service
-tee /etc/systemd/system/story-geth.service > /dev/null <<EOF
+sudo tee /etc/systemd/system/story-geth.service > /dev/null << EOF
 [Unit]
-Description=Story Geth Client
-After=network.target
+Description=Story Execution Client service
+After=network-online.target
 
 [Service]
 User=$USER
-ExecStart=$HOME/go/bin/story-geth --odyssey --syncmode full --http --http.api eth,net,web3,engine --http.vhosts '*' --http.addr 127.0.0.1 --http.port 8545 --ws --ws.api eth,web3,net,txpool --ws.addr 127.0.0.1 --ws.port 8546
+WorkingDirectory=$HOME/.story/geth
+ExecStart=$HOME/go/bin/geth --odyssey --syncmode full --http --ws
 Restart=on-failure
-RestartSec=3
+RestartSec=5
 LimitNOFILE=65535
 
 [Install]
