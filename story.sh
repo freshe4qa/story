@@ -72,7 +72,7 @@ ufw allow 6060 comment story_geth_prometheus_port
 cd && rm -rf story
 git clone https://github.com/piplabs/story.git
 cd story
-git checkout v0.12.1
+git checkout v0.13.0
 story-geth version
 
 mkdir -p $HOME/go/bin/
@@ -81,7 +81,7 @@ go build -o $HOME/go/bin/story ./client
 cd && rm -rf story-geth
 git clone https://github.com/piplabs/story-geth.git
 cd story-geth
-git checkout v0.10.0
+git checkout v0.10.1
 
 make geth
 mv build/bin/geth $HOME/go/bin/
